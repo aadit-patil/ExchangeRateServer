@@ -24,6 +24,25 @@ func InitMySQL(dsn string) {
 	SetDatabase(&MySQLDB{conn: db})
 }
 
+func InitMySQL1(dsn string) {
+	var db *sql.DB
+	var err error
+	for i := 0; i < 10; i++ {
+		db, err = sql.Open("mysql", dsn)
+		if err == nil {
+			err = db.Ping()
+		}
+		if err == nil {
+			SetDatabase(&MySQLDB{conn: db})
+			log.Println("Connected to MySQL")
+			return
+		}
+		log.Printf("⏳ Waiting for DB... retrying in 3s: %v\n", err)
+		time.Sleep(3 * time.Second)
+	}
+	log.Fatalf("Could not connect to MySQL: %v", err)
+}
+
 func (m *MySQLDB) GetRate(from, to, date string) (float64, error) {
 	var rate float64
 	metrics.DBQueries.Inc()

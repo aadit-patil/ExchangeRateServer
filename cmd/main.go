@@ -13,7 +13,8 @@ import (
 )
 
 func main() {
-	db.InitMySQL("root:@tcp(localhost:3306)/exchange")
+	//db.InitMySQL("root:@tcp(localhost:3306)/exchange")
+	db.InitMySQLWithRetry("root:root@tcp(db:3306)/exchange")
 	cache.InitSingleton()
 
 	strategy := service.NewCacheDBAPIStrategy()
