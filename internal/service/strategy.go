@@ -2,8 +2,8 @@ package service
 
 import (
 	"errors"
-
 	"fmt"
+	"time"
 
 	"github.com/aadit-patil/ExchangeRateServer/internal/cache"
 	"github.com/aadit-patil/ExchangeRateServer/internal/client"
@@ -27,22 +27,31 @@ func NewCacheDBAPIStrategy() *CacheDBAPIStrategy {
 }
 
 func (s *CacheDBAPIStrategy) GetRate(from, to, date string) (float64, error) {
-	key := fmt.Sprintf("%s:%s:%s", date, from, to)
-	if rate, ok := cache.GetCache().Get(key); ok {
-		return rate, nil
+	if date == "" {
+		date = time.Now().Format("2006-01-02")
+	}
+	key := fmt.Sprintf("%s:%s", date, from)
+
+	if rates, ok := cache.GetCache().GetRates(key); ok {
+		if rate, exists := rates[to]; exists {
+			return rate, nil
+		}
 	}
 
 	rate, err := db.DBImpl.GetRate(from, to, date)
 	if err == nil {
-		cache.GetCache().Set(key, rate)
+		cache.GetCache().SetRates(key, map[string]float64{to: rate}, time.Now().Add(1*time.Hour))
 		return rate, nil
 	}
 
-	rate, err = client.FetchRate(from, to, date)
+	ratesMap, ttl, err := client.FetchRatesForBase(from)
 	if err != nil {
-		return 0, errors.New("failed to retrieve rate from all sources")
+		return 0, errors.New("failed to fetch from API")
 	}
-	db.DBImpl.InsertRate(from, to, date, rate)
-	cache.GetCache().Set(key, rate)
-	return rate, nil
+	_ = db.DBImpl.InsertMultipleRates(from, date, ratesMap, ttl)
+	if rate, ok := ratesMap[to]; ok && supportedCurrencies[to] {
+		cache.GetCache().SetRates(key, map[string]float64{to: rate}, ttl)
+		return rate, nil
+	}
+	return 0, errors.New("unsupported currency or missing rate")
 }
