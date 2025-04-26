@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/aadit-patil/ExchangeRateServer/internal/metrics"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -25,6 +26,7 @@ func InitMySQL(dsn string) {
 
 func (m *MySQLDB) GetRate(from, to, date string) (float64, error) {
 	var rate float64
+	metrics.DBQueries.Inc()
 	err := m.conn.QueryRow(
 		`SELECT rate FROM exchange_rates WHERE rate_date=? AND base_currency=? AND target_currency=?`,
 		date, from, to).Scan(&rate)
@@ -32,6 +34,7 @@ func (m *MySQLDB) GetRate(from, to, date string) (float64, error) {
 }
 
 func (m *MySQLDB) InsertRate(from, to, date string, rate float64) error {
+	metrics.DBQueries.Inc()
 	_, err := m.conn.Exec(
 		`INSERT IGNORE INTO exchange_rates (rate_date, base_currency, target_currency, rate) VALUES (?, ?, ?, ?)`,
 		date, from, to, rate)
@@ -57,6 +60,7 @@ func (m *MySQLDB) InsertMultipleRates(base, date string, rates map[string]float6
 			tx.Rollback()
 			return err
 		}
+		metrics.DBQueries.Inc()
 	}
 	return tx.Commit()
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/aadit-patil/ExchangeRateServer/internal/metrics"
 )
 
 type ExchangeRateAPIResponse struct {
@@ -15,6 +17,7 @@ type ExchangeRateAPIResponse struct {
 func FetchRatesForBase(base string) (map[string]float64, time.Time, error) {
 	apiKey := "a123fc8630d96a14097c1594"
 	url := fmt.Sprintf("https://v6.exchangerate-api.com/v6/%s/latest/%s", apiKey, base)
+	metrics.APIRequests.Inc()
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, time.Time{}, err

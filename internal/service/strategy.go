@@ -8,6 +8,7 @@ import (
 	"github.com/aadit-patil/ExchangeRateServer/internal/cache"
 	"github.com/aadit-patil/ExchangeRateServer/internal/client"
 	"github.com/aadit-patil/ExchangeRateServer/internal/db"
+	"github.com/aadit-patil/ExchangeRateServer/internal/metrics"
 )
 
 type RateFetchStrategy interface {
@@ -34,9 +35,11 @@ func (s *CacheDBAPIStrategy) GetRate(from, to, date string) (float64, error) {
 
 	if rates, ok := cache.GetCache().GetRates(key); ok {
 		if rate, exists := rates[to]; exists {
+			metrics.CacheHits.Inc()
 			return rate, nil
 		}
 	}
+	metrics.CacheMisses.Inc()
 
 	rate, err := db.DBImpl.GetRate(from, to, date)
 	if err == nil {
@@ -48,7 +51,11 @@ func (s *CacheDBAPIStrategy) GetRate(from, to, date string) (float64, error) {
 	if err != nil {
 		return 0, errors.New("failed to fetch from API")
 	}
-	_ = db.DBImpl.InsertMultipleRates(from, date, ratesMap, ttl)
+
+	errDB := db.DBImpl.InsertMultipleRates(from, date, ratesMap, ttl)
+	if errDB != nil {
+		return 0, fmt.Errorf("db get error: %w", err)
+	}
 	if rate, ok := ratesMap[to]; ok && supportedCurrencies[to] {
 		cache.GetCache().SetRates(key, map[string]float64{to: rate}, ttl)
 		return rate, nil
