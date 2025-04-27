@@ -12,9 +12,9 @@ var instance *ristretto.Cache
 func InitSingleton() {
 	var err error
 	instance, err = ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e7,
-		MaxCost:     1 << 30,
-		BufferItems: 64,
+		NumCounters: 1e6,
+		MaxCost:     1 << 28,
+		BufferItems: 128,
 	})
 	if err != nil {
 		log.Fatal(err)
