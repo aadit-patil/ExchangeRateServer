@@ -64,6 +64,10 @@ GET /convert
 
 `curl --location 'http://localhost:8088/convert?from=USD&to=EUR&date=2024-04-25'`
 
+### 4. Get only historical rate with date range ( from start , to end)
+
+`curl --location 'http://localhost:8088/convert/range?from=USD&to=INR&start=2025-03-08&end=2025-03-15`
+
 ## Prometheus Metrics
 
 Metrics are available at:
