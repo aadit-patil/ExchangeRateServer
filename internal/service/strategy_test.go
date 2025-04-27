@@ -13,7 +13,7 @@ import (
 func TestGetRate_FromCache(t *testing.T) {
 	cache.InitSingleton()
 	key := time.Now().Format("2006-01-02") + ":USD"
-	cache.GetCache().SetRates(key, map[string]float64{"INR": 83.0}, time.Now().Add(1*time.Hour))
+	cache.SetRate(key, 83.0, time.Hour)
 
 	strategy := NewCacheDBAPIStrategy()
 	SetGlobalStrategy(strategy)

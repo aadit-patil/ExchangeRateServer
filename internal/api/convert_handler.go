@@ -6,9 +6,19 @@ import (
 	"strconv"
 	"time"
 
-	model "github.com/aadit-patil/ExchangeRateServer/internal/models"
+	"github.com/aadit-patil/ExchangeRateServer/internal/configs"
+	"github.com/aadit-patil/ExchangeRateServer/internal/errors"
 	"github.com/aadit-patil/ExchangeRateServer/internal/service"
 )
+
+type ConvertResponse struct {
+	Rate   float64 `json:"rate"`
+	Amount float64 `json:"amount,omitempty"`
+}
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
 
 func ConvertHandler(w http.ResponseWriter, r *http.Request) {
 	from := r.URL.Query().Get("from")
@@ -17,35 +27,43 @@ func ConvertHandler(w http.ResponseWriter, r *http.Request) {
 	amount := r.URL.Query().Get("amount")
 
 	if from == "" || to == "" {
-		http.Error(w, "missing parameters", http.StatusBadRequest)
+		errors.ErrBadRequest.Write(w)
 		return
 	}
 
-	// If date is empty, use today's date
+	if configs.SupportedCurrencies[from] || configs.SupportedCurrencies[to] {
+		errors.ErrUnsupportedCurrency.Write(w)
+		return
+	}
+
+	if !service.IsValidDate(date) {
+		errors.ErrInvalidDateRange.Write(w)
+		return
+	}
+
+	amt, err2 := strconv.ParseFloat(amount, 64)
+	if err2 != nil {
+		errors.ErrInvalidAmount.Write(w)
+		return
+	}
+
 	if date == "" {
 		date = time.Now().Format("2006-01-02")
 	}
 
+	rate, err := service.ConvertCurrency(from, to, date)
+	if err != nil {
+		// start async background update
+		go service.GetGlobalStrategy().FetchAndStoreRate(from, to, date)
+		//use prefetched rate
+		rate, _ = service.ConvertCurrency(from, to, time.Now().Format("2006-01-02"))
+	}
+
 	if amount == "" {
-		rate, err := service.ConvertCurrency(from, to, date)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		json.NewEncoder(w).Encode(model.ConvertResponse{Rate: rate})
+		json.NewEncoder(w).Encode(ConvertResponse{Rate: rate})
 		return
 	}
+	convertedAmt := amt * rate
+	json.NewEncoder(w).Encode(ConvertResponse{Rate: rate, Amount: convertedAmt})
 
-	amt, err := strconv.ParseFloat(amount, 64)
-	if err != nil {
-		http.Error(w, "invalid amount", http.StatusBadRequest)
-		return
-	}
-
-	converted, rate, err := service.ConvertCurrencyWithAmount(amt, from, to, date)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-	json.NewEncoder(w).Encode(model.ConvertResponse{Rate: rate, Amount: converted})
 }
