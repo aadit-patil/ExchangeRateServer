@@ -64,7 +64,23 @@ GET /convert
 
 `curl --location 'http://localhost:8088/convert?from=USD&to=EUR&date=2024-04-25'`
 
-### 4. Get only historical rate with date range ( from start , to end)
+
+#### Endpoint URL
+```bash
+GET /convert/range
+```
+
+### Query Parameters
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| from | string | Yes | Base currency code (e.g., USD) |
+| to | string | Yes | Target currency code (e.g., INR) |
+| start | string | Yes | Start Date YYYY-MM-DD |
+| end | string | Yes | End Date YYYY-MM-DD |
+
+## Example API Calls
+
+### 1. Get only historical rate with date range ( from start , to end)
 
 `curl --location 'http://localhost:8088/convert/range?from=USD&to=INR&start=2025-03-08&end=2025-03-15`
 
