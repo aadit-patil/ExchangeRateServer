@@ -24,7 +24,7 @@ func InitMySQL(dsn string) {
 	SetDatabase(&MySQLDB{conn: db})
 }
 
-func InitMySQL1(dsn string) {
+func InitMySQLWithRetry(dsn string) {
 	var db *sql.DB
 	var err error
 	for i := 0; i < 10; i++ {
